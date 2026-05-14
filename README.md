@@ -138,7 +138,7 @@ git clone https://github.com/Valls123/School_Forum
 cd School_Forum
 
 # 2. Установить зависимости
-pip install -r requirements.txt
+pip install -r requests.txt
 
 # 3. Создать базу данных
 flask shell
