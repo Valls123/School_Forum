@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex justify-between items-center mb-8">
+    <h1 class="text-3xl font-black">Управление школой</h1>
+    <a href="{{ url_for('posts.moderation_posts') }}"
+       class="bg-yellow-600 hover:bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm transition flex items-center gap-2">
+        <i class="fas fa-eye-slash"></i>
+        Скрытые посты
+        {% if hidden_count > 0 %}
+        <span class="bg-red-500 text-white text-xs rounded-full px-2 py-0.5 ml-1">{{ hidden_count }}</span>
+        {% endif %}
+    </a>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+<div class="mb-4 p-4 rounded-lg {% if category == 'success' %}bg-green-900/30 text-green-400{% elif category == 'danger' %}bg-red-900/30 text-red-400{% elif category == 'warning' %}bg-yellow-900/30 text-yellow-400{% else %}bg-blue-900/30 text-blue-400{% endif %}">
+    {{ message }}
+</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<div class="bg-[#151921] rounded-2xl border border-gray-800 overflow-x-auto">
+    <table class="w-full text-left">
+        <thead class="bg-[#0f1218] text-gray-500 text-xs uppercase">
+        <tr>
+            <th class="p-4">Ученик</th>
+            <th class="p-4">Роль</th>
+            <th class="p-4">Секретка</th>
+            <th class="p-4">Верификация</th>
+            <th class="p-4">Статус</th>
+            <th class="p-4">Действия</th>
+        </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-800">
+        {% for u in users %}
+        <tr class="hover:bg-white/5">
+            <td class="p-4 font-bold">
+                {{ u.username }}
+                {% if u.id == current_user.id %}
+                <span class="ml-2 text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded">это вы</span>
+                {% endif %}
+            </td>
+            <td class="p-4">
+                {% if u.role == 'Администратор' %}
+                <span class="bg-red-900/30 text-red-400 text-xs px-2 py-1 rounded">Админ</span>
+                {% elif u.role == 'Модератор' %}
+                <span class="bg-yellow-900/30 text-yellow-400 text-xs px-2 py-1 rounded">Модератор</span>
+                {% else %}
+                <span class="bg-gray-700 text-gray-300 text-xs px-2 py-1 rounded">Участник</span>
+                {% endif %}
+            </td>
+            <td class="p-4">
+                {% if u.is_cheater %}
+                <span class="bg-green-900/30 text-green-400 text-xs px-2 py-1 rounded">✅ Есть доступ</span>
+                {% else %}
+                <span class="bg-gray-700 text-gray-300 text-xs px-2 py-1 rounded">❌ Нет доступа</span>
+                {% endif %}
+            </td>
+            <td class="p-4">
+                {% if u.is_verified %}
+                <span class="bg-green-900/30 text-green-400 text-xs px-2 py-1 rounded">✓ Верифицирован</span>
+                {% else %}
+                <span class="bg-gray-700 text-gray-300 text-xs px-2 py-1 rounded">✗ Не верифицирован</span>
+                {% endif %}
+            </td>
+            <td class="p-4">
+                {% if u.is_deleted %}
+                <span class="bg-red-900/30 text-red-400 text-xs px-2 py-1 rounded">Удалён</span>
+                {% elif u.is_banned_permanent %}
+                <span class="bg-red-900/30 text-red-400 text-xs px-2 py-1 rounded">Заблокирован навсегда</span>
+                {% elif u.banned_until and u.banned_until > now %}
+                <span class="bg-orange-900/30 text-orange-400 text-xs px-2 py-1 rounded">Заблокирован до {{ u.banned_until.strftime('%d.%m.%Y %H:%M') }}</span>
+                {% else %}
+                <span class="bg-green-900/30 text-green-400 text-xs px-2 py-1 rounded">Активен</span>
+                {% endif %}
+            </td>
+            <td class="p-4 space-x-2">
+                {% if u.id != current_user.id %}
+
+                <!-- Роли -->
+                <form action="{{ url_for('admin.toggle_role', uid=u.id) }}" method="post" class="inline">
+                    {% if u.role == 'Администратор' %}
+                    <input type="hidden" name="action" value="remove_admin">
+                    <button type="submit"
+                            class="text-[10px] bg-red-900/30 text-red-400 hover:bg-red-900/50 p-1.5 rounded transition"
+                            onclick="return confirm('Забрать права администратора у {{ u.username }}?')">⚠️ Забрать админку</button>
+                    {% elif u.role == 'Модератор' %}
+                    <input type="hidden" name="action" value="remove_moderator">
+                    <button type="submit"
+                            class="text-[10px] bg-yellow-900/30 text-yellow-400 hover:bg-yellow-900/50 p-1.5 rounded transition"
+                            onclick="return confirm('Забрать права модератора у {{ u.username }}?')">🔰 Забрать модерку</button>
+                    {% else %}
+                    <input type="hidden" name="action" value="make_moderator">
+                    <button type="submit"
+                            class="text-[10px] bg-yellow-900/30 text-yellow-400 hover:bg-yellow-900/50 p-1.5 rounded transition"
+                            onclick="return confirm('Сделать {{ u.username }} модератором?')">🛡️ Сделать модером</button>
+                    {% endif %}
+                </form>
+
+                <!-- Сделать админом -->
+                {% if u.role != 'Администратор' %}
+                <form action="{{ url_for('admin.toggle_role', uid=u.id) }}" method="post" class="inline">
+                    <input type="hidden" name="action" value="make_admin">
+                    <button type="submit"
+                            class="text-[10px] bg-red-900/30 text-red-400 hover:bg-red-900/50 p-1.5 rounded transition"
+                            onclick="return confirm('Сделать {{ u.username }} администратором? Это даст полный доступ.')">👑 Сделать админом</button>
+                </form>
+                {% endif %}
+
+                <!-- Секретка -->
+                <form action="{{ url_for('admin.toggle_role', uid=u.id) }}" method="post" class="inline">
+                    <input type="hidden" name="action" value="toggle_secret">
+                    <button type="submit"
+                            class="text-[10px] {% if u.is_cheater %}bg-purple-900/30 text-purple-400 hover:bg-purple-900/50{% else %}bg-blue-900/30 text-blue-400 hover:bg-blue-900/50{% endif %} p-1.5 rounded transition"
+                            onclick="return confirm('{% if u.is_cheater %}Забрать{% else %}Дать{% endif %} доступ к секретному чату {{ u.username }}?')">
+                        {% if u.is_cheater %}🔒 Забрать секретку{% else %}🔓 Дать секретку{% endif %}
+                    </button>
+                </form>
+
+                <!-- Верификация -->
+                <form action="{{ url_for('admin.toggle_verify', uid=u.id) }}" method="post" class="inline">
+                    <button type="submit"
+                            class="text-[10px] {% if u.is_verified %}bg-green-900/30 text-green-400 hover:bg-green-900/50{% else %}bg-blue-900/30 text-blue-400 hover:bg-blue-900/50{% endif %} p-1.5 rounded transition"
+                            onclick="return confirm('{% if u.is_verified %}Снять{% else %}Выдать{% endif %} верификацию для {{ u.username }}?')">
+                        {% if u.is_verified %}⭐ Снять верификацию{% else %}✅ Верифицировать{% endif %}
+                    </button>
+                </form>
+
+                <!-- Блокировка -->
+                {% if u.is_banned_permanent or (u.banned_until and u.banned_until > now) %}
+                <a href="{{ url_for('admin.unban_user', user_id=u.id) }}"
+                   class="text-[10px] bg-green-900/30 text-green-400 hover:bg-green-900/50 p-1.5 rounded transition">🔓 Разблокировать</a>
+                {% else %}
+                <a href="{{ url_for('admin.ban_user', user_id=u.id) }}"
+                   class="text-[10px] bg-orange-900/30 text-orange-400 hover:bg-orange-900/50 p-1.5 rounded transition">🔨 Блокировать</a>
+                {% endif %}
+
+                <!-- Удаление профиля -->
+                <a href="{{ url_for('admin.delete_user', user_id=u.id) }}"
+                   class="text-[10px] bg-red-900/30 text-red-400 hover:bg-red-900/50 p-1.5 rounded transition"
+                   onclick="return confirm('Удалить профиль {{ u.username }} навсегда?')">🗑️ Удалить профиль</a>
+
+                {% else %}
+                <span class="text-gray-600 text-xs">Нельзя изменить себя</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-3xl font-black mb-8">Скрытые посты (на модерацию)</h1>
+<div class="space-y-6">
+    {% for post in posts %}
+    <div class="bg-[#151921] rounded-2xl p-6 border border-gray-800">
+        <div class="flex justify-between items-start">
+            <div>
+                <h2 class="text-2xl font-black">{{ post.title }}</h2>
+                <p class="text-gray-400 mt-2">{{ post.content }}</p>
+                <p class="text-xs text-gray-500 mt-2">
+                    Автор: u/{{ post.author.username }}<br>
+                    Скрыл: {{ post.hidden_by.username }} ({{ post.hidden_at|datetimeformat }})
+                </p>
+            </div>
+            <div class="flex gap-2">
+                <a href="{{ url_for('posts.moderate_post', post_id=post.id, action='restore') }}"
+                   class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg text-sm">
+                    Восстановить
+                </a>
+                <a href="{{ url_for('posts.moderate_post', post_id=post.id, action='delete') }}"
+                   class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg text-sm"
+                   onclick="return confirm('Удалить пост навсегда?')">
+                    Удалить
+                </a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <p>Нет скрытых постов.</p>
+    {% endfor %}
+</div>
+{% endblock %}

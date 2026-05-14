@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="flex justify-between items-center mb-8">
+    <h1 class="text-3xl font-black">Кланы</h1>
+    {% if current_user.is_authenticated and current_user.is_verified and not current_user.clan_membership %}
+    <a href="{{ url_for('clans.create') }}"
+       class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition">
+        <i class="fas fa-plus mr-1"></i>Создать клан
+    </a>
+    {% endif %}
+</div>
+
+{% if clans %}
+<div class="space-y-4">
+    {% for clan in clans %}
+    <a href="{{ url_for('clans.view', clan_id=clan.id) }}"
+       class="bg-[#151921] rounded-2xl border border-gray-800 hover:border-gray-600 transition overflow-hidden flex items-center gap-4 p-4 block">
+
+        <img src="/static/avatars/{{ clan.avatar }}"
+             class="w-14 h-14 rounded-xl object-cover border border-gray-700 flex-shrink-0"
+             onerror="this.src='/static/avatars/default.png'">
+
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="font-black text-lg">{{ clan.name }}</span>
+                {% if clan.is_verified %}
+                <i class="fas fa-check-circle text-blue-500" title="Верифицированный клан"></i>
+                {% endif %}
+                <span class="text-xs px-2 py-0.5 rounded-full
+                    {% if clan.mode == 'open' %}bg-green-900/30 text-green-400
+                    {% elif clan.mode == 'restricted' %}bg-yellow-900/30 text-yellow-400
+                    {% else %}bg-red-900/30 text-red-400{% endif %}">
+                    {% if clan.mode == 'open' %}Открытый
+                    {% elif clan.mode == 'restricted' %}Ограниченный
+                    {% else %}Закрытый{% endif %}
+                </span>
+            </div>
+            {% if clan.description %}
+            <p class="text-gray-400 text-sm truncate">{{ clan.description }}</p>
+            {% endif %}
+            <div class="flex items-center gap-4 text-xs text-gray-600 mt-1">
+                <span><i class="fas fa-users mr-1"></i>{{ clan.members|length }} участников</span>
+                <span><i class="fas fa-star mr-1 text-yellow-500"></i>{{ clan.rating }} рейтинг</span>
+            </div>
+        </div>
+
+        <i class="fas fa-chevron-right text-gray-700"></i>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-[#151921] rounded-2xl border border-gray-800 p-12 text-center">
+    <i class="fas fa-shield-alt text-5xl text-gray-700 mb-4 block"></i>
+    <p class="text-gray-500 mb-2">Кланов пока нет</p>
+    {% if current_user.is_authenticated and current_user.is_verified %}
+    <a href="{{ url_for('clans.create') }}" class="text-blue-400 hover:underline text-sm">Создать первый клан</a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

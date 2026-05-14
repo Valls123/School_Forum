@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h1 class="text-3xl font-black mb-8">Настройки клана</h1>
+
+<div class="bg-[#151921] rounded-2xl border border-gray-800 p-6" style="max-width:560px;">
+    <form method="POST" enctype="multipart/form-data" class="space-y-4">
+
+        <div>
+            <label class="block text-sm text-gray-400 mb-1">Описание</label>
+            <textarea name="description" maxlength="300" rows="3"
+                      class="w-full bg-[#0b0e14] border border-gray-700 p-3 rounded-xl outline-none focus:border-blue-500 text-sm resize-none">{{ clan.description }}</textarea>
+        </div>
+
+        <div>
+            <label class="block text-sm text-gray-400 mb-1">Режим вступления</label>
+            <select name="mode" class="w-full bg-[#0b0e14] border border-gray-700 p-3 rounded-xl outline-none text-sm">
+                <option value="open" {% if clan.mode == 'open' %}selected{% endif %}>Открытый</option>
+                <option value="restricted" {% if clan.mode == 'restricted' %}selected{% endif %}>Ограниченный</option>
+                <option value="closed" {% if clan.mode == 'closed' %}selected{% endif %}>Закрытый</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-sm text-gray-400 mb-1">Аватар клана</label>
+            <input type="file" name="avatar" accept="image/*"
+                   class="w-full bg-[#0b0e14] border border-gray-700 p-3 rounded-xl text-sm">
+            {% if clan.avatar and clan.avatar != 'default_clan.png' %}
+            <img src="/static/avatars/{{ clan.avatar }}" class="mt-2 w-16 h-16 rounded-xl object-cover">
+            {% endif %}
+        </div>
+
+        <div>
+            <label class="block text-sm text-gray-400 mb-1">Баннер клана</label>
+            <input type="file" name="banner" accept="image/*"
+                   class="w-full bg-[#0b0e14] border border-gray-700 p-3 rounded-xl text-sm">
+            {% if clan.banner and clan.banner != 'default_clan_banner.png' %}
+            <div class="mt-2 rounded-xl overflow-hidden h-16">
+                <img src="/static/avatars/{{ clan.banner }}" class="w-full h-full object-cover">
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="flex gap-3 pt-2">
+            <button type="submit"
+                    class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold transition">
+                Сохранить
+            </button>
+            <a href="{{ url_for('clans.view', clan_id=clan.id) }}"
+               class="border border-gray-700 hover:bg-white/5 text-gray-300 px-6 py-3 rounded-xl text-sm transition">
+                Отмена
+            </a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

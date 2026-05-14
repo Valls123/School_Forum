@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+<style>
+    html { scroll-behavior: smooth; }
+
+    .highlight-message { animation: highlight 1s ease-out; }
+    @keyframes highlight {
+        0% { background-color: rgba(59, 130, 246, 0.4); }
+        100% { background-color: transparent; }
+    }
+
+    .profile-link { text-decoration: none; color: inherit; }
+    .profile-link:hover { text-decoration: underline; }
+
+    /* Анимация появления сообщения */
+    @keyframes messageIn {
+        0%   { opacity: 0; transform: translateY(12px) scale(0.97); }
+        100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .message-new {
+        animation: messageIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    /* Анимация кнопки отправки */
+    @keyframes sendPop {
+        0%   { transform: scale(1); }
+        40%  { transform: scale(0.85) rotate(-10deg); }
+        100% { transform: scale(1) rotate(0deg); }
+    }
+    .send-pop { animation: sendPop 0.3s ease forwards; }
+</style>
+
+<div class="max-w-3xl mx-auto flex flex-col h-[80vh] bg-[#151921] rounded-3xl border border-gray-800 overflow-hidden shadow-2xl">
+
+    <!-- Закрепленное сообщение -->
+    {% set pinned = messages|selectattr('is_pinned', 'equalto', True)|first %}
+    {% if pinned %}
+    <div id="pinned-bar" class="bg-[#1c232d] p-3 border-b border-blue-500/30 flex justify-between items-center">
+        <a href="#msg-{{ pinned.id }}"
+           class="flex items-center gap-3 hover:bg-[#2a3440] transition rounded-lg p-1 -m-1"
+           id="pinned-link">
+            <i class="fas fa-thumbtack text-blue-500 text-xs"></i>
+            <div class="text-xs">
+                <p class="text-blue-400 font-bold">
+                    Закрепленное сообщение от {{ pinned.user.username }}
+                    {% if pinned.user.is_verified %}
+                        <i class="fas fa-check-circle text-blue-500 text-[10px] ml-1"></i>
+                    {% endif %}
+                </p>
+                <p class="text-gray-400 truncate w-64">{{ pinned.content }}</p>
+            </div>
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Окно сообщений -->
+    <div id="chat-window" class="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-hide">
+        {% for m in messages %}
+        <div id="msg-{{ m.id }}" class="message-item flex items-end gap-3 {% if m.user_id == current_user.id %}flex-row-reverse{% endif %}">
+            <a href="{{ url_for('profile.profile', id=m.user.id) }}" class="profile-link">
+                <img src="/static/avatars/{{ m.user.avatar if m.user and m.user.avatar else 'default.png' }}"
+                     class="w-8 h-8 rounded-full object-cover"
+                     onerror="this.src='/static/avatars/default.png'">
+            </a>
+            <div class="max-w-[70%]">
+                <div class="flex items-center gap-2 mb-1 {% if m.user_id == current_user.id %}justify-end{% endif %}">
+                    <a href="{{ url_for('profile.profile', id=m.user.id) }}" class="profile-link">
+                        <span class="text-[10px] font-bold text-gray-500">{{ m.user.username if m.user else 'Неизвестный' }}</span>
+                    </a>
+                    {% if m.user and m.user.is_verified %}
+                        <i class="fas fa-check-circle text-blue-500 text-[10px]"></i>
+                    {% endif %}
+                </div>
+                <div class="p-3 rounded-2xl text-sm shadow-sm relative group
+                    {% if m.user_id == current_user.id %}bg-blue-600 text-white rounded-br-none{% else %}bg-[#252d38] text-gray-200 rounded-bl-none{% endif %}">
+                    {{ m.content }}
+                    {% if current_user.role in ['Администратор', 'Модератор'] %}
+                        <a href="{{ url_for('chat.delete_message', msg_id=m.id) }}"
+                           class="absolute -top-2 -left-2 bg-gray-900 rounded-full p-1 text-[8px] opacity-0 group-hover:opacity-100 transition shadow-lg"
+                           onclick="return confirm('Удалить сообщение?')">🗑️</a>
+                    {% endif %}
+                    {% if current_user.role == 'Администратор' %}
+                        <a href="{{ url_for('chat.pin_message', mid=m.id) }}"
+                           class="absolute -top-2 -right-2 bg-gray-900 rounded-full p-1 text-[8px] opacity-0 group-hover:opacity-100 transition shadow-lg">📌</a>
+                    {% endif %}
+                </div>
+                <p class="text-[8px] text-gray-600 mt-1 {% if m.user_id == current_user.id %}text-right{% endif %}">
+                    {{ m.timestamp|datetimeformat }}
+                </p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Поле ввода -->
+    <div class="p-4 bg-[#0b0e14] flex gap-3">
+        <input id="chat-input" placeholder="Написать сообщение..."
+               class="flex-1 bg-[#1c232d] border border-gray-800 rounded-2xl px-4 py-3 outline-none focus:border-blue-500 transition">
+        <button id="send-btn" onclick="send()"
+                class="bg-blue-600 hover:bg-blue-500 w-12 h-12 rounded-full flex items-center justify-center transition shadow-lg shadow-blue-900/20">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+</div>
+
+<script>
+    const socket = io();
+    const chatWindow = document.getElementById('chat-window');
+    const chatInput = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('send-btn');
+
+    function addMessageToChat(data, animate = true) {
+        if (!data || !data.username) return;
+
+        const isMine = (data.user_id === {{ current_user.id|tojson }});
+        const avatarPath = data.avatar ? `/static/avatars/${data.avatar}` : '/static/avatars/default.png';
+        const messageId = 'temp-' + Date.now();
+
+        const div = document.createElement('div');
+        div.id = messageId;
+        div.className = `message-item flex items-end gap-3 ${isMine ? 'flex-row-reverse' : ''}${animate ? ' message-new' : ''}`;
+        div.innerHTML = `
+            <a href="/profile/${data.user_id}" class="profile-link">
+                <img src="${avatarPath}" class="w-8 h-8 rounded-full object-cover"
+                     onerror="this.src='/static/avatars/default.png'">
+            </a>
+            <div class="max-w-[70%]">
+                <div class="flex items-center gap-2 mb-1 ${isMine ? 'justify-end' : ''}">
+                    <a href="/profile/${data.user_id}" class="profile-link">
+                        <span class="text-[10px] font-bold text-gray-500">${data.username}</span>
+                    </a>
+                    ${data.is_verified ? '<i class="fas fa-check-circle text-blue-500 text-[10px]"></i>' : ''}
+                </div>
+                <div class="p-3 rounded-2xl text-sm shadow-sm ${isMine ? 'bg-blue-600 text-white rounded-br-none' : 'bg-[#252d38] text-gray-200 rounded-bl-none'}">
+                    ${data.msg}
+                </div>
+                <p class="text-[8px] text-gray-600 mt-1 ${isMine ? 'text-right' : ''}">только что</p>
+            </div>
+        `;
+
+        chatWindow.appendChild(div);
+        chatWindow.scrollTo({ top: chatWindow.scrollHeight, behavior: 'smooth' });
+
+        // Убираем класс анимации после завершения
+        if (animate) {
+            div.addEventListener('animationend', () => div.classList.remove('message-new'));
+        }
+    }
+
+    socket.on('message', function(data) {
+        addMessageToChat(data);
+    });
+
+    socket.on('reload_chat', function() {
+        location.reload();
+    });
+
+    function send() {
+        const text = chatInput.value.trim();
+        if (!text) return;
+
+        // Анимация кнопки
+        sendBtn.classList.add('send-pop');
+        sendBtn.addEventListener('animationend', () => sendBtn.classList.remove('send-pop'), { once: true });
+
+        socket.send(text);
+        chatInput.value = '';
+    }
+
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') send();
+    });
+
+    // Подсветка закреплённого при клике
+    if (window.location.hash) {
+        const target = document.querySelector(window.location.hash);
+        if (target) {
+            setTimeout(() => {
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                target.classList.add('highlight-message');
+                setTimeout(() => target.classList.remove('highlight-message'), 1000);
+            }, 100);
+        }
+    }
+
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+</script>
+{% endblock %}

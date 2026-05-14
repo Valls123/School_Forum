@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Удаление — {{ user.username }}{% endblock %}
+
+{% block content %}
+<h1 class="text-3xl font-black mb-8">Удаление профиля</h1>
+
+<div class="bg-[#151921] rounded-2xl p-6 border border-gray-800" style="max-width: 480px;">
+
+  <!-- USER -->
+  <div class="flex items-center gap-4 mb-6 p-4 rounded-xl bg-white/5">
+    <img src="{{ url_for('static', filename='avatars/' + user.avatar) }}"
+         class="rounded-full w-14 h-14 object-cover">
+    <div>
+      <div class="font-black text-lg">{{ user.username }}</div>
+      <div class="text-gray-400 text-sm">{{ user.role }}
+        {% if user.is_verified %}
+          <span class="ml-2 bg-blue-900/30 text-blue-400 text-xs px-2 py-0.5 rounded">✓ Верифицирован</span>
+        {% endif %}
+      </div>
+      <div class="text-gray-500 text-xs">Регистрация: {{ user.reg_date.strftime('%d.%m.%Y') }}</div>
+    </div>
+  </div>
+
+  <!-- WARNING -->
+  <div class="mb-6 p-4 rounded-lg bg-red-900/30 text-red-400 text-sm space-y-1">
+    <div class="font-bold text-base">⚠️ Это действие необратимо</div>
+    <div class="text-red-300">Будут удалены:</div>
+    <ul class="list-disc list-inside text-red-300 space-y-0.5">
+      <li>Профиль пользователя</li>
+      <li>Все его посты</li>
+      <li>Все голоса</li>
+    </ul>
+  </div>
+
+  <p class="text-gray-400 text-sm mb-6">
+    Вы уверены, что хотите удалить профиль
+    <span class="text-white font-bold">{{ user.username }}</span>?
+  </p>
+
+  <!-- BUTTONS -->
+  <div class="flex gap-3">
+    <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}" class="flex-1">
+      <button type="submit"
+              class="w-full bg-red-600 hover:bg-red-500 text-white px-5 py-2 rounded-lg text-sm transition">
+        🗑️ Удалить навсегда
+      </button>
+    </form>
+    <a href="{{ url_for('admin') }}"
+       class="border border-gray-700 hover:bg-white/5 text-gray-300 px-5 py-2 rounded-lg text-sm transition">
+      Отмена
+    </a>
+  </div>
+
+</div>
+{% endblock %}

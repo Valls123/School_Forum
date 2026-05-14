@@ -1,0 +1,428 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Карточка профиля -->
+    <div class="bg-[#151921] rounded-3xl border border-gray-800 overflow-hidden shadow-2xl mb-8">
+        <!-- Шапка с градиентом -->
+        <div class="h-32 relative"
+             style="background: {% if user.banner and user.banner != 'default_banner.png' %}url('/static/avatars/{{ user.banner }}') center/cover no-repeat{% else %}linear-gradient(to right, #2563eb, #9333ea){% endif %};">
+            <div class="absolute -bottom-16 left-8">
+                <div class="relative">
+                    <img src="/static/avatars/{{ user.avatar }}"
+                         class="w-32 h-32 rounded-2xl border-4 border-[#151921] object-cover shadow-2xl"
+                         onerror="this.src='/static/avatars/default.png'">
+                    {% if user.is_online() %}
+                    <span class="absolute bottom-2 right-2 w-4 h-4 bg-green-500 border-4 border-[#151921] rounded-full"></span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Информация о пользователе -->
+        <div class="pt-20 p-8">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h1 class="text-3xl font-bold text-white flex items-center gap-3">
+                        {{ user.username }}
+                        {% if user.is_verified %}
+                        <i class="fas fa-check-circle text-blue-500 text-2xl" title="Верифицированный профиль"></i>
+                        {% endif %}
+                        {% if user.role == 'Администратор' %}
+                        <span class="bg-red-900/30 text-red-400 text-xs px-3 py-1 rounded-full">
+                                <i class="fas fa-crown mr-1"></i>Админ
+                            </span>
+                        {% elif user.role == 'Модератор' %}
+                        <span class="bg-yellow-900/30 text-yellow-400 text-xs px-3 py-1 rounded-full">
+                                <i class="fas fa-shield-alt mr-1"></i>Модератор
+                            </span>
+                        {% endif %}
+                        {% if user.is_cheater %}
+                        <span class="bg-purple-900/30 text-purple-400 text-xs px-3 py-1 rounded-full">
+                                <i class="fas fa-lock mr-1"></i>Секретный агент
+                            </span>
+                        {% endif %}
+                    </h1>
+                    <p class="text-gray-500 mt-2">
+                        <i class="fas fa-calendar mr-2"></i>
+                        На сайте с {{ user.reg_date.strftime('%d %B %Y') }}
+                    </p>
+
+                    {% if top_rank %}
+                    <p class="text-yellow-500 mt-1 text-sm">
+                        <i class="fas fa-trophy mr-1"></i>
+                        Занимает {{ top_rank }} место в топе участников
+                    </p>
+                    {% endif %}
+
+                    {% if user.is_verified %}
+                    <p class="text-green-500 mt-1 text-sm">
+                        <i class="fas fa-check-circle mr-1"></i> Профиль подтверждён администрацией сайта
+                    </p>
+                    {% endif %}
+                </div>
+
+                <!-- Статистика с подписками -->
+                <div class="flex gap-4">
+                    <a href="{{ url_for('profile.followers', user_id=user.id) }}"
+                       class="bg-[#1e2633] rounded-2xl p-4 text-center min-w-[100px] hover:bg-[#252f3a] transition">
+                        <div class="text-2xl font-bold text-blue-400">{{ user.followers_count }}</div>
+                        <div class="text-xs text-gray-500">
+                            <i class="fas fa-users mr-1"></i>Подписчики
+                        </div>
+                    </a>
+
+                    <a href="{{ url_for('profile.following', user_id=user.id) }}"
+                       class="bg-[#1e2633] rounded-2xl p-4 text-center min-w-[100px] hover:bg-[#252f3a] transition">
+                        <div class="text-2xl font-bold text-green-400">{{ user.following_count }}</div>
+                        <div class="text-xs text-gray-500">
+                            <i class="fas fa-user-plus mr-1"></i>Подписки
+                        </div>
+                    </a>
+
+                    <div class="bg-[#1e2633] rounded-2xl p-4 text-center min-w-[100px]">
+                        <div class="text-2xl font-bold text-yellow-400">{{ user.rating }}</div>
+                        <div class="text-xs text-gray-500">
+                            <i class="fas fa-star mr-1"></i>Рейтинг
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Кнопка подписки (для чужих профилей) -->
+            {% if current_user.is_authenticated and current_user.id != user.id %}
+            <div class="mt-4">
+                {% if user.is_followed_by(current_user) %}
+                <a href="{{ url_for('profile.unfollow', user_id=user.id) }}"
+                   class="bg-red-600/20 hover:bg-red-600/40 text-red-400 px-6 py-2 rounded-xl text-sm font-medium transition inline-flex items-center gap-2">
+                    <i class="fas fa-user-minus"></i>
+                    Отписаться
+                </a>
+                {% else %}
+                <a href="{{ url_for('profile.follow', user_id=user.id) }}"
+                   class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-sm font-medium transition inline-flex items-center gap-2">
+                    <i class="fas fa-user-plus"></i>
+                    Подписаться
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Биография -->
+            {% if user.bio and user.bio != "No bio" %}
+            <div class="mt-8 p-6 bg-[#1e2633] rounded-2xl">
+                <h2 class="text-sm font-bold text-gray-500 mb-3">
+                    <i class="fas fa-quote-right mr-2"></i>О себе
+                </h2>
+                <p class="text-gray-300">{{ user.bio }}</p>
+            </div>
+            {% endif %}
+
+            <!-- Кнопка редактирования (только для своего профиля) -->
+            {% if current_user.id == user.id %}
+            <div class="mt-8 flex justify-end">
+                <button onclick="toggleEdit()"
+                        class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-2xl text-sm font-medium transition-all duration-200 transform hover:scale-105 shadow-lg shadow-blue-900/30 flex items-center gap-2">
+                    <i class="fas fa-edit"></i>
+                    Редактировать профиль
+                </button>
+            </div>
+
+            <!-- Форма редактирования (скрыта по умолчанию) -->
+            <div id="edit-form" class="mt-8 hidden">
+                <form action="{{ url_for('profile.edit_profile') }}" method="post" enctype="multipart/form-data"
+                      class="bg-[#1e2633] rounded-2xl p-6">
+                    <h2 class="text-lg font-bold mb-6">Редактирование профиля</h2>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-500 mb-2">
+                                <i class="fas fa-image mr-1"></i>Аватар
+                            </label>
+                            <input type="file" name="avatar" accept="image/*"
+                                   class="w-full bg-[#151921] rounded-xl p-3 text-sm border border-gray-700">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm text-gray-500 mb-2">
+                                <i class="fas fa-panorama mr-1"></i>Баннер профиля
+                            </label>
+                            <input type="file" name="banner" accept="image/*"
+                                   class="w-full bg-[#151921] rounded-xl p-3 text-sm border border-gray-700">
+                            {% if user.banner and user.banner != 'default_banner.png' %}
+                            <div class="mt-2 rounded-xl overflow-hidden h-16">
+                                <img src="/static/avatars/{{ user.banner }}" class="w-full h-full object-cover">
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div>
+
+                            <div>
+                                <label class="block text-sm text-gray-500 mb-2">
+                                    <i class="fas fa-pencil mr-1"></i>О себе
+                                </label>
+                                <textarea name="bio" rows="4"
+                                          class="w-full bg-[#151921] rounded-xl p-3 text-sm border border-gray-700 focus:border-blue-500 outline-none resize-none">{{ user.bio if user.bio != "No bio" else '' }}</textarea>
+                            </div>
+
+                            <div class="flex gap-3">
+                                <button type="submit"
+                                        class="bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded-xl text-sm font-medium transition flex-1">
+                                    <i class="fas fa-save mr-1"></i>Сохранить
+                                </button>
+                                <button type="button" onclick="toggleEdit()"
+                                        class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-xl text-sm font-medium transition">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Посты пользователя -->
+    <div class="bg-[#151921] rounded-3xl border border-gray-800 overflow-hidden">
+        <div class="p-6 border-b border-gray-800 flex justify-between items-center">
+            <h2 class="text-xl font-bold flex items-center gap-2">
+                <i class="fas fa-pen text-blue-500"></i>
+                Посты пользователя
+                <span class="text-sm text-gray-500 ml-2">({{ posts|length }})</span>
+            </h2>
+
+            <!-- Сортировка -->
+            <div class="flex gap-2">
+                <button onclick="sortPosts('newest')"
+                        class="text-xs bg-[#1e2633] hover:bg-[#252f3a] px-3 py-1.5 rounded-lg transition sort-btn active"
+                        data-sort="newest">
+                    <i class="fas fa-clock mr-1"></i>Новые
+                </button>
+                <button onclick="sortPosts('rating')"
+                        class="text-xs bg-[#1e2633] hover:bg-[#252f3a] px-3 py-1.5 rounded-lg transition sort-btn"
+                        data-sort="rating">
+                    <i class="fas fa-star mr-1"></i>Лучшие
+                </button>
+            </div>
+        </div>
+
+        <div class="divide-y divide-gray-800" id="posts-container">
+            {% for post in posts|sort(attribute='date_posted', reverse=true) %}
+            <div class="p-6 hover:bg-white/5 transition post-item"
+                 data-post-id="{{ post.id }}"
+                 data-date="{{ post.date_posted.timestamp() }}"
+                 data-rating="{{ post.rating }}">
+                <div class="flex items-start gap-4">
+                    <!-- Блок голосования -->
+                    <div class="flex flex-col items-center min-w-[60px]">
+                        <a href="{{ url_for('posts.vote', id=post.id, action='up') }}"
+                           class="vote-btn up-btn {% if current_user.is_authenticated and post.user_vote(current_user) == 1 %}active{% endif %}"
+                           onclick="vote(event, this, {{ post.id }}, 'up')">
+                            <i class="fas fa-chevron-up"></i>
+                        </a>
+
+                        <span class="rating-value text-lg font-bold my-1 {% if post.rating > 0 %}text-green-400{% elif post.rating < 0 %}text-red-400{% endif %}">
+                            {{ post.rating }}
+                        </span>
+
+                        <a href="{{ url_for('posts.vote', id=post.id, action='down') }}"
+                           class="vote-btn down-btn {% if current_user.is_authenticated and post.user_vote(current_user) == -1 %}active{% endif %}"
+                           onclick="vote(event, this, {{ post.id }}, 'down')">
+                            <i class="fas fa-chevron-down"></i>
+                        </a>
+                    </div>
+
+                    <div class="flex-1">
+                        <h3 class="text-lg font-bold mb-2">
+                            <a href="{{ url_for('posts.post_detail', post_id=post.id) }}"
+                               class="hover:text-blue-400 transition">
+                                {{ post.title }}
+                            </a>
+                        </h3>
+                        <p class="text-gray-400 text-sm mb-4 line-clamp-2">{{ post.content }}</p>
+                        <div class="flex items-center gap-4 text-xs text-gray-600">
+                            <span>
+                                <i class="far fa-clock mr-1"></i>
+                                {{ post.date_posted|datetimeformat }}
+                            </span>
+                            {% if post.is_expired %}
+                            <span class="text-red-500">
+                                <i class="fas fa-hourglass-end mr-1"></i>Истек
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="p-12 text-center">
+                <i class="fas fa-pen text-5xl text-gray-700 mb-4"></i>
+                <p class="text-gray-500">У пользователя пока нет постов</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Стили для кнопок голосования */
+    .vote-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 9999px;
+        background-color: #1e2633;
+        color: #9ca3af;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+
+    .vote-btn:hover {
+        transform: scale(1.1);
+    }
+
+    .up-btn:hover {
+        background-color: #10b981;
+        color: white;
+    }
+
+    .down-btn:hover {
+        background-color: #ef4444;
+        color: white;
+    }
+
+    .up-btn.active {
+        background-color: #10b981;
+        color: white;
+    }
+
+    .down-btn.active {
+        background-color: #ef4444;
+        color: white;
+    }
+
+    .rating-value {
+        min-width: 40px;
+        text-align: center;
+        font-weight: bold;
+    }
+
+    .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .sort-btn.active {
+        background-color: #2563eb;
+        color: white;
+    }
+</style>
+
+<script>
+    function toggleEdit() {
+        const form = document.getElementById('edit-form');
+        form.classList.toggle('hidden');
+    }
+
+    // Функция для голосования без перезагрузки
+    function vote(event, element, postId, action) {
+        {% if not current_user.is_authenticated %}
+            window.location.href = "{{ url_for('auth.login') }}";
+            return;
+        {% endif %}
+
+        event.preventDefault();
+
+        const postDiv = element.closest('.post-item');
+        const upBtn = postDiv.querySelector('.up-btn');
+        const downBtn = postDiv.querySelector('.down-btn');
+        const ratingSpan = postDiv.querySelector('.rating-value');
+
+        // Отправляем голос
+        fetch(`/vote/${postId}/${action}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.text();
+            })
+            .then(() => {
+                // Обновляем рейтинг через отдельный запрос
+                return fetch(`/api/post/${postId}/rating`);
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Обновляем отображение рейтинга
+                ratingSpan.textContent = data.rating;
+                ratingSpan.className = `rating-value text-lg font-bold my-1 ${data.rating > 0 ? 'text-green-400' : data.rating < 0 ? 'text-red-400' : ''}`;
+
+                // Обновляем активные кнопки
+                upBtn.classList.remove('active');
+                downBtn.classList.remove('active');
+
+                if (data.user_vote === 1) {
+                    upBtn.classList.add('active');
+                } else if (data.user_vote === -1) {
+                    downBtn.classList.add('active');
+                }
+
+                // Обновляем общий рейтинг пользователя в шапке
+                updateUserRating();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Если AJAX не сработал, перезагружаем страницу
+                window.location.reload();
+            });
+    }
+
+    // Функция для обновления общего рейтинга пользователя
+    function updateUserRating() {
+        fetch(`/api/user/{{ user.id }}/rating`)
+            .then(response => response.json())
+            .then(data => {
+                const ratingElement = document.querySelector('.bg-\\[\\#1e2633\\] .text-2xl.font-bold.text-yellow-400');
+                if (ratingElement) {
+                    ratingElement.textContent = data.rating;
+                }
+            });
+    }
+
+    // Функция для сортировки постов
+    function sortPosts(type) {
+        const container = document.getElementById('posts-container');
+        const posts = Array.from(container.children);
+        const sortBtns = document.querySelectorAll('.sort-btn');
+
+        // Обновляем активную кнопку
+        sortBtns.forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.sort === type) {
+                btn.classList.add('active');
+            }
+        });
+
+        // Сортируем посты
+        posts.sort((a, b) => {
+            if (type === 'newest') {
+                return parseFloat(b.dataset.date) - parseFloat(a.dataset.date);
+            } else {
+                return parseFloat(b.dataset.rating) - parseFloat(a.dataset.rating);
+            }
+        });
+
+        // Переставляем в DOM
+        posts.forEach(post => container.appendChild(post));
+    }
+
+    // Автоматически показываем новые посты при загрузке
+    document.addEventListener('DOMContentLoaded', function() {
+        sortPosts('newest');
+    });
+</script>
+{% endblock %}

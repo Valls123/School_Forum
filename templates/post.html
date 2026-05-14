@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!-- POST -->
+<div class="bg-[#151921] rounded-2xl flex border border-gray-800 overflow-hidden mb-8">
+
+  <!-- Голосование -->
+  <div class="bg-[#0f1218] p-4 flex flex-col items-center gap-3 border-r border-gray-800 min-w-[70px]">
+    <a href="/vote/{{ post.id }}/up"
+       class="transition hover:text-orange-500 {% if user_vote == 1 %}text-orange-500{% else %}text-gray-500{% endif %}">
+      <i class="fas fa-chevron-up text-xl"></i>
+    </a>
+    <span class="font-black text-lg
+      {% if post.rating > 0 %}text-green-500
+      {% elif post.rating < 0 %}text-red-500
+      {% else %}text-gray-400{% endif %}">
+      {{ post.rating }}
+    </span>
+    <a href="/vote/{{ post.id }}/down"
+       class="transition hover:text-blue-500 {% if user_vote == -1 %}text-blue-500{% else %}text-gray-500{% endif %}">
+      <i class="fas fa-chevron-down text-xl"></i>
+    </a>
+  </div>
+
+  <!-- Контент -->
+  <div class="p-6 flex-1">
+
+    <!-- Автор -->
+    <div class="flex items-center gap-3 text-xs mb-4">
+      <a href="/profile/{{ post.author.id }}" class="flex items-center gap-2">
+        <img src="/static/avatars/{{ post.author.avatar or 'default.png' }}"
+             class="w-7 h-7 rounded-full object-cover border border-gray-700">
+        <span class="font-bold text-blue-400">u/{{ post.author.username }}</span>
+      </a>
+      {% if post.author.is_verified %}
+        <i class="fas fa-check-circle text-blue-500" title="Верифицирован"></i>
+      {% endif %}
+      {% if post.author.role == 'Администратор' %}
+        <span class="bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded border border-red-500/20 font-bold text-[9px]">ADMIN</span>
+      {% elif post.author.role == 'Модератор' %}
+        <span class="bg-yellow-500/10 text-yellow-500 px-1.5 py-0.5 rounded border border-yellow-500/20 font-bold text-[9px]">MODER</span>
+      {% endif %}
+      <span class="text-gray-600">•</span>
+      <span class="text-gray-500">{{ post.date_posted|datetimeformat }}</span>
+      {% if post.is_expired %}
+        <span class="text-red-900 font-bold">[АРХИВ]</span>
+      {% endif %}
+    </div>
+
+    <h1 class="text-3xl font-black mb-3">{{ post.title }}</h1>
+    <p class="text-gray-300 leading-relaxed whitespace-pre-wrap">{{ post.content }}</p>
+
+    <!-- Скрыть для модераторов -->
+    {% if current_user.is_authenticated and current_user.role in ['Администратор', 'Модератор'] and not post.hidden %}
+    <div class="mt-4 flex justify-end">
+      <a href="{{ url_for('posts.hide_post', post_id=post.id) }}"
+         class="text-xs bg-yellow-900/30 text-yellow-400 hover:bg-yellow-900/50 px-3 py-1.5 rounded-lg transition"
+         onclick="return confirm('Скрыть этот пост?')">
+        <i class="fas fa-eye-slash mr-1"></i>Скрыть
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- COMMENTS -->
+<div id="comments">
+  <h2 class="text-xl font-black mb-4">
+    Комментарии
+    <span class="text-gray-500 font-normal text-sm ml-2">{{ comments|length }}</span>
+  </h2>
+
+  <!-- Форма добавления -->
+  {% if current_user.is_authenticated %}
+  <form action="{{ url_for('comments.add_comment', post_id=post.id) }}" method="POST"
+        class="bg-[#151921] rounded-2xl p-4 border border-gray-800 mb-6">
+    <textarea name="content" placeholder="Твой комментарий..." required
+              class="w-full bg-[#0b0e14] p-3 rounded-xl h-20 outline-none border border-gray-700 focus:border-blue-500 text-sm resize-none"></textarea>
+    <div class="flex justify-end mt-2">
+      <button class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg text-sm transition font-bold">
+        Отправить
+      </button>
+    </div>
+  </form>
+  {% else %}
+  <div class="bg-[#151921] rounded-2xl p-4 border border-gray-800 mb-6 text-gray-500 text-sm text-center">
+    <a href="{{ url_for('auth.login') }}" class="text-blue-400 hover:underline">Войди</a>, чтобы оставить комментарий
+  </div>
+  {% endif %}
+
+  <!-- Список комментариев -->
+  <div class="space-y-3">
+    {% for comment in comments %}
+    <div class="bg-[#151921] rounded-2xl border {% if comment.is_pinned %}border-yellow-700/50{% else %}border-gray-800{% endif %} overflow-hidden">
+      <div class="flex">
+
+        <!-- Голосование комментария -->
+        <div class="bg-[#0f1218] px-3 flex flex-col items-center justify-center gap-1.5 border-r border-gray-800 min-w-[52px]">
+          <a href="{{ url_for('comments.vote_comment', comment_id=comment.id, value=1) }}"
+             class="transition hover:text-orange-500 {% if comment_votes.get(comment.id) == 1 %}text-orange-500{% else %}text-gray-600{% endif %}">
+            <i class="fas fa-chevron-up"></i>
+          </a>
+          <span class="text-xs font-black
+            {% if comment.rating > 0 %}text-green-500
+            {% elif comment.rating < 0 %}text-red-500
+            {% else %}text-gray-500{% endif %}">
+            {{ comment.rating }}
+          </span>
+          <a href="{{ url_for('comments.vote_comment', comment_id=comment.id, value=-1) }}"
+             class="transition hover:text-blue-500 {% if comment_votes.get(comment.id) == -1 %}text-blue-500{% else %}text-gray-600{% endif %}">
+            <i class="fas fa-chevron-down"></i>
+          </a>
+        </div>
+
+        <!-- Контент комментария -->
+        <div class="p-4 flex-1">
+          <div class="flex items-center gap-2 text-xs mb-2">
+            <a href="/profile/{{ comment.author.id }}" class="flex items-center gap-1.5 hover:opacity-80 transition">
+              <img src="/static/avatars/{{ comment.author.avatar or 'default.png' }}"
+                   class="w-5 h-5 rounded-full object-cover border border-gray-700">
+              <span class="font-bold text-blue-400">u/{{ comment.author.username }}</span>
+            </a>
+            {% if comment.author.is_verified %}
+              <i class="fas fa-check-circle text-blue-500 text-[10px]"></i>
+            {% endif %}
+            {% if comment.author.role == 'Администратор' %}
+              <span class="bg-red-500/10 text-red-500 px-1 py-0.5 rounded border border-red-500/20 font-bold text-[8px]">ADMIN</span>
+            {% elif comment.author.role == 'Модератор' %}
+              <span class="bg-yellow-500/10 text-yellow-500 px-1 py-0.5 rounded border border-yellow-500/20 font-bold text-[8px]">MODER</span>
+            {% endif %}
+            {% if comment.is_pinned %}
+              <span class="bg-yellow-900/30 text-yellow-500 px-1.5 py-0.5 rounded text-[9px]">
+                <i class="fas fa-thumbtack mr-0.5"></i>Закреплён
+              </span>
+            {% endif %}
+            <span class="text-gray-600">•</span>
+            <span class="text-gray-500">{{ comment.date_posted|datetimeformat }}</span>
+
+            <!-- Действия -->
+            <div class="ml-auto flex items-center gap-2">
+              {% if current_user.is_authenticated and (current_user.role in ['Администратор', 'Модератор'] or current_user.id == post.author_id) %}
+                <a href="{{ url_for('comments.pin_comment', comment_id=comment.id) }}"
+                   class="text-gray-500 hover:text-yellow-400 transition text-[10px]"
+                   title="{% if comment.is_pinned %}Открепить{% else %}Закрепить{% endif %}">
+                  <i class="fas fa-thumbtack"></i>
+                </a>
+              {% endif %}
+              {% if current_user.is_authenticated and (current_user.role in ['Администратор', 'Модератор'] or current_user.id == post.author_id) %}
+                <a href="{{ url_for('comments.delete_comment', comment_id=comment.id) }}"
+                   class="text-gray-500 hover:text-red-400 transition text-[10px]"
+                   onclick="return confirm('Удалить комментарий?')"
+                   title="Удалить">
+                  <i class="fas fa-trash"></i>
+                </a>
+              {% endif %}
+            </div>
+          </div>
+
+          <p class="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{{ comment.content }}</p>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="text-gray-600 text-sm text-center py-8">
+      Комментариев пока нет. Будь первым!
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}

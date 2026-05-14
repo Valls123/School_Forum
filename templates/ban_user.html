@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}Блокировка — {{ user.username }}{% endblock %}
+
+{% block content %}
+<h1 class="text-3xl font-black mb-8">Блокировка пользователя</h1>
+
+<div class="bg-[#151921] rounded-2xl p-6 border border-gray-800" style="max-width: 520px;">
+
+  <!-- USER -->
+  <div class="flex items-center gap-4 mb-6 p-4 rounded-xl bg-white/5">
+    <img src="{{ url_for('static', filename='avatars/' + user.avatar) }}"
+         class="rounded-full w-14 h-14 object-cover">
+    <div>
+      <div class="font-black text-lg">{{ user.username }}</div>
+      <div class="text-gray-400 text-sm">{{ user.role }}</div>
+      <div class="text-gray-500 text-xs">Регистрация: {{ user.reg_date.strftime('%d.%m.%Y') }}</div>
+    </div>
+  </div>
+
+  <!-- STATUS -->
+  {% if user.is_banned_permanent %}
+    <div class="mb-4 p-3 rounded-lg bg-red-900/30 text-red-400 text-sm">
+      ⚠️ Пользователь заблокирован навсегда
+    </div>
+  {% elif user.banned_until %}
+    <div class="mb-4 p-3 rounded-lg bg-yellow-900/30 text-yellow-400 text-sm">
+      ⏳ Заблокирован до <strong>{{ user.banned_until.strftime('%d.%m.%Y %H:%M') }}</strong> UTC
+    </div>
+  {% endif %}
+
+  <form method="POST">
+
+    <!-- OPTIONS -->
+    <div class="mb-4">
+      <label class="text-gray-400 text-xs uppercase mb-2 block">Срок блокировки</label>
+      <div class="space-y-1">
+        {% for val, label in [
+          (30, '30 минут'),
+          (360, '6 часов'),
+          (1440, '1 день'),
+          (10080, '7 дней'),
+          (43200, '30 дней')
+        ] %}
+        <label class="flex items-center gap-3 p-2.5 rounded-lg border border-gray-800 hover:bg-white/5 cursor-pointer transition">
+          <input type="radio" name="duration" value="{{ val }}" class="accent-cyan-500">
+          <span class="text-sm">{{ label }}</span>
+        </label>
+        {% endfor %}
+
+        <label class="flex items-center gap-3 p-2.5 rounded-lg border border-red-900/40 hover:bg-red-900/10 cursor-pointer transition">
+          <input type="radio" name="duration" value="permanent" class="accent-red-500">
+          <span class="text-sm text-red-400 font-semibold">Навсегда</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- CUSTOM -->
+    <div class="mb-6">
+      <label class="text-gray-500 text-xs mb-1 block">Или произвольное число минут</label>
+      <div class="flex gap-2">
+        <input type="number" id="customMinutes" min="1" placeholder="2880"
+               class="bg-[#0f1218] border border-gray-700 text-white text-sm rounded-lg px-3 py-2 w-36 focus:outline-none focus:border-cyan-500">
+        <button type="button" onclick="applyCustom()"
+                class="bg-gray-700 hover:bg-gray-600 text-white text-sm px-3 py-2 rounded-lg transition">
+          Применить
+        </button>
+      </div>
+    </div>
+
+    <!-- BUTTONS -->
+    <div class="flex gap-3">
+      <button type="submit"
+              class="bg-red-600 hover:bg-red-500 text-white px-5 py-2 rounded-lg text-sm transition flex-1">
+        🔨 Заблокировать
+      </button>
+      <a href="{{ url_for('admin') }}"
+         class="border border-gray-700 hover:bg-white/5 text-gray-300 px-5 py-2 rounded-lg text-sm transition">
+        Отмена
+      </a>
+    </div>
+
+  </form>
+</div>
+
+<script>
+function applyCustom() {
+  const val = document.getElementById('customMinutes').value.trim();
+  if (!val || parseInt(val) < 1) return;
+
+  document.querySelectorAll('input[name="duration"]').forEach(r => r.checked = false);
+
+  let hidden = document.getElementById('hiddenDuration');
+  if (!hidden) {
+    hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = 'duration';
+    hidden.id = 'hiddenDuration';
+    document.querySelector('form').appendChild(hidden);
+  }
+  hidden.value = val;
+}
+</script>
+
+{% endblock %}

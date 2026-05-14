@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex justify-center items-center mt-20">
+    <div class="bg-[#151921] p-8 rounded-2xl border border-blue-900/30 w-full max-w-md shadow-2xl">
+        <h2 class="text-3xl font-black text-center mb-6 text-blue-400">Стать школьником</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="mb-4 p-3 rounded-lg text-sm flex items-center gap-2
+                    {% if category == 'error' %}bg-red-900/30 text-red-400 border border-red-800/40
+                    {% elif category == 'success' %}bg-green-900/30 text-green-400 border border-green-800/40
+                    {% else %}bg-blue-900/30 text-blue-400 border border-blue-800/40{% endif %}">
+                    <i class="fas fa-exclamation-circle"></i>{{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form action="/register" method="POST" class="space-y-6">
+            <div>
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-widest text-blue-200/50">Придумай ник</label>
+                <input name="username" required placeholder="IvanIvanov" class="w-full bg-[#0b0e14] border border-gray-700 p-3 rounded-lg focus:border-blue-500 outline-none mt-1 transition">
+                <p class="text-gray-600 text-xs mt-1">Только латиница, цифры и _ · Начинается с буквы · 3–20 символов</p>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-widest text-blue-200/50">Придумай пароль</label>
+                <input name="password" type="password" required placeholder="••••••••" class="w-full bg-[#0b0e14] border border-gray-700 p-3 rounded-lg focus:border-blue-500 outline-none mt-1 transition text-white">
+            </div>
+            <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 rounded-lg transition shadow-lg shadow-blue-900/20">
+                Зарегистрироваться
+            </button>
+        </form>
+
+        <p class="mt-6 text-center text-sm text-gray-500">
+            Уже есть аккаунт? <a href="/login" class="text-blue-400 hover:underline font-bold">Войти</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
