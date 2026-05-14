@@ -134,7 +134,7 @@ ComputerGarden/
 
 ```bash
 # 1. Клонировать репозиторий
-git clone https://github.com/your-username/ComputerGarden.git
+git clone https://github.com/Valls123/School_Forum
 cd ComputerGarden
 
 # 2. Установить зависимости
